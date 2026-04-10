@@ -1,9 +1,9 @@
 --[[
-    SCRIPT: GUNSLAYER HUB | V3.0 | STABLE & ANTI-BAN
+    SCRIPT: GUNSLAYER HUB | V3.2 | VIM AUTOCLICKER FIX
     DEVELOPER: Adham_M_YT (Founder) 
     ASSISTANT: AMY
     PLATFORM: AMY HUB
-    STATUS: UNIVERSAL SHOOTER + SMART HITBOX + FIXED RADAR
+    STATUS: UNIVERSAL SHOOTER + SMART HITBOX + FIXED RADAR + VIM CLICKER
 ]]
 
 local success, Rayfield = pcall(function()
@@ -16,7 +16,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager") -- المكتبة الجديدة والأقوى
 local Camera = workspace.CurrentCamera
 local LP = Players.LocalPlayer
 
@@ -174,9 +174,9 @@ local function ExecuteTweenSticky(targetName)
 end
 
 local Window = Rayfield:CreateWindow({
-   Name = "AMY HUB | GUNSLAYER V3.0 🔫",
+   Name = "AMY HUB | GUNSLAYER V3.2 🔫",
    LoadingTitle = "Adham_M_YT x AMY LOADING...",
-   LoadingSubtitle = "Loading Safe Scripts...",
+   LoadingSubtitle = "Injecting VIM AutoClicker...",
    ConfigurationSaving = {Enabled = false}
 })
 
@@ -187,18 +187,16 @@ local VisualsTab = Window:CreateTab("👁️ ESP", 4483362458)
 local PVP_Tab = Window:CreateTab("⚡ PVP Player", 4483362458)
 local RadarTab = Window:CreateTab("🛡️ Hacker Radar", 4483362458) 
 
--- [ إرجاع تاب المعلومات بالكامل ]
 InfoTab:CreateSection("👤 فريق التطوير")
 InfoTab:CreateLabel("المطور الرسمي: Adham_M_YT")
 InfoTab:CreateLabel("المساعد البرمجي: AMY")
 InfoTab:CreateLabel("المنصة الرسمية: AMY HUB")
 InfoTab:CreateSection("🌟 رسالة شكر")
-InfoTab:CreateParagraph({Title = "شكراً لكم", Content = "شكراً لدعمكم المستمر لـ AMY HUB. نتمنى لكم تجربة لعب ممتعة وبدون باند!"})
+InfoTab:CreateParagraph({Title = "شكراً لكم", Content = "شكراً لدعمكم المستمر لـ AMY HUB."})
 
 MainTab:CreateSection("🔫 أدوات القتال الأساسية")
 MainTab:CreateToggle({Name = "PC Aimbot (Right Click)", CurrentValue = false, Callback = function(v) Settings.Aimbot = v end})
 
--- [ إضافة اختصار الكيبورد للأوتو كليكر ]
 MainTab:CreateKeybind({
    Name = "⌨️ اختصار زر الأوتو كليكر",
    CurrentKeybind = "C",
@@ -208,7 +206,7 @@ MainTab:CreateKeybind({
        Rayfield:Notify({Title = "🖱️ Auto Clicker", Content = Settings.AutoClicker and "تم التشغيل" or "تم الإيقاف", Duration = 2})
    end,
 })
-MainTab:CreateToggle({Name = "تشغيل الأوتو كليكر يدوياً", CurrentValue = false, Callback = function(v) Settings.AutoClicker = v end})
+MainTab:CreateToggle({Name = "تشغيل الأوتو كليكر (VIM - فعال جداً)", CurrentValue = false, Callback = function(v) Settings.AutoClicker = v end})
 
 MainTab:CreateSection("🟩 Hitbox Expander")
 MainTab:CreateToggle({
@@ -298,7 +296,7 @@ PVP_Tab:CreateSlider({Name = "سرعة المشي (WalkSpeed)", Range = {16, 100
 PVP_Tab:CreateToggle({Name = "🚀 طيران لا نهائي", CurrentValue = false, Callback = function(v) Settings.InfJump = v end})
 PVP_Tab:CreateToggle({Name = "👻 اختراق الجدران", CurrentValue = false, Callback = function(v) Settings.Noclip = v end})
 
-RadarTab:CreateSection("🚨 كاشف الهكرات المتقدم (تم إصلاح الرسباون)")
+RadarTab:CreateSection("🚨 كاشف الهكرات المتقدم")
 RadarTab:CreateToggle({
     Name = "تفعيل رادار كشف الهكرات", CurrentValue = false,
     Callback = function(v)
@@ -317,7 +315,6 @@ RadarTab:CreateButton({
 
 -- [ 7. المحركات والخوارزميات (The Loops) ]
 
--- الرادار الذكي بعد إصلاح الرسباون
 task.spawn(function()
     while task.wait(1) do
         pcall(function()
@@ -328,14 +325,12 @@ task.spawn(function()
                         local hum = p.Character:FindFirstChildOfClass("Humanoid")
                         local currentPos = hrp.Position
                         
-                        -- التأكد إن اللاعب عايش
                         if hum and hum.Health > 0 and not DetectedHackers[p.Name] then
                             local isHacking = false
                             local hackType = ""
                             
                             if LastPositions[p.Name] then
                                 local distanceMoved = (currentPos - LastPositions[p.Name]).Magnitude
-                                -- تجاهل المسافات الضخمة بتاعت الرسباون (فوق 400 بلوكة)
                                 if distanceMoved > 80 and distanceMoved < 400 then 
                                     isHacking = true
                                     hackType = "🚀 سرعة عالية / طيران"
@@ -409,7 +404,6 @@ RunService.RenderStepped:Connect(function()
             if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local hrp = p.Character.HumanoidRootPart
                 
-                -- إصلاح ألوان الفريق بالكامل
                 local isTeammate = false
                 if not Settings.FFAMode and LP.Team ~= nil then 
                     isTeammate = (p.Team == LP.Team) 
@@ -417,25 +411,18 @@ RunService.RenderStepped:Connect(function()
                 
                 if Settings.HitboxExpander then
                     if isTeammate and not Settings.HitboxTeam then
-                        -- إرجاع الفريق للحجم الطبيعي
                         if hrp.Size.X > 3 then
                             hrp.Size = Vector3.new(2, 2, 1)
                             hrp.Transparency = 1
                             hrp.CanCollide = true
                         end
                     else
-                        -- تكبير المربعات
                         hrp.Size = Vector3.new(Settings.HitboxSize, Settings.HitboxSize, Settings.HitboxSize)
                         hrp.Transparency = 0.7
                         hrp.Material = Enum.Material.Neon
                         hrp.CanCollide = false
-                        
-                        -- التلوين الصحيح
-                        if isTeammate then 
-                            hrp.Color = Color3.fromRGB(0, 255, 0) -- أخضر لفريقك
-                        else 
-                            hrp.Color = Color3.fromRGB(255, 0, 0) -- أحمر للأعداء
-                        end
+                        if isTeammate then hrp.Color = Color3.fromRGB(0, 255, 0)
+                        else hrp.Color = Color3.fromRGB(255, 0, 0) end
                     end
                 end
                 
@@ -468,18 +455,24 @@ RunService.RenderStepped:Connect(function()
     end)
 end)
 
--- الأوتو كليكر 
+-- [ الأوتو كليكر المحدث باستخدام VIM - بيشتغل جوه أي لعبة بدون ما يعلق الماوس ]
 task.spawn(function()
-    while task.wait(0.01) do
+    while task.wait(0.02) do
         pcall(function()
-            if Settings.AutoClicker then 
-                if type(mouse1click) == "function" then
-                    mouse1click()
-                else
-                    VirtualUser:Button1Down(Vector2.new())
-                    task.wait(0.01)
-                    VirtualUser:Button1Up(Vector2.new())
+            if Settings.AutoClicker then
+                local char = LP.Character
+                if char then
+                    local tool = char:FindFirstChildOfClass("Tool")
+                    if tool then
+                        tool:Activate() -- محاولة أولى للضرب المباشر
+                    end
                 end
+                
+                -- إرسال نقرة وهمية إلى منتصف الشاشة (دقيقة جداً وبتشتغل على كل الأجهزة)
+                local center = Camera.ViewportSize / 2
+                VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, true, game, 0) -- ضغطة
+                task.wait(0.01)
+                VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, false, game, 0) -- شيل الضغطة
             end
         end)
     end
@@ -487,8 +480,9 @@ end)
 
 LP.Idled:Connect(function() 
     pcall(function() 
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new()) 
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
+        task.wait(0.1)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
     end) 
 end)
 
@@ -498,4 +492,4 @@ LP.CharacterAdded:Connect(function()
     if CurrentTween then CurrentTween:Cancel() end 
 end)
 
-pcall(function() Rayfield:Notify({Title = "✅ AMY HUB | V3.0", Content = " تم حل جميع مشاكل اوتو كليكر للكمبيوتر!", Duration = 6}) end)
+pcall(function() Rayfield:Notify({Title = "✅ AMY HUB | V3.2", Content = "تم إصلاح الأوتو كليكر بنظام VIM الشامل!", Duration = 6}) end)
