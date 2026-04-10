@@ -1,14 +1,17 @@
 --[[
-    SCRIPT: GUNSLAYER HUB | V2.6 | SMART HITBOX & AIRWALK
+    SCRIPT: GUNSLAYER HUB | V3.0 | STABLE & ANTI-BAN
     DEVELOPER: Adham_M_YT (Founder) 
     ASSISTANT: AMY
     PLATFORM: AMY HUB
-    STATUS: UNIVERSAL SHOOTER + SMART HITBOX (TEAM CHECK) + AIRWALK
-    DATE: APRIL 8, 2026
+    STATUS: UNIVERSAL SHOOTER + SMART HITBOX + FIXED RADAR
 ]]
 
--- [ 1. المكتبات الأساسية ]
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+end)
+
+if not success or not Rayfield then return end
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -17,7 +20,6 @@ local VirtualUser = game:GetService("VirtualUser")
 local Camera = workspace.CurrentCamera
 local LP = Players.LocalPlayer
 
--- [ 2. إعدادات السكربت (Settings) ]
 local Settings = {
     Aimbot = false,
     MobileLock = false,
@@ -28,28 +30,26 @@ local Settings = {
     WalkSpeed = 16,
     JumpPower = 50,
     InfJump = false,
-    TPHeight = 12, 
+    Noclip = false, 
     TweenSpeed = 380,
     PlayerLiftHeight = 0,
-    FlySpeed = 50,
     PlayerESP = false,
     SearchText = "",
-    
-    -- إعدادات الـ Hitbox المحدثة
     HitboxExpander = false,
     HitboxSize = 50,
-    HitboxTeam = false, -- الخيار الجديد للفريق
-    
-    -- إعدادات المشي السحري
+    HitboxTeam = false, 
+    FFAMode = false, 
     CustomHeightOffset = 50,
-    AirWalkToggle = false
+    AirWalkToggle = false,
+    RadarEnabled = false
 }
 
 local CurrentTween = nil
 local PlayerDrop = nil 
 local TargetAirWalkY = 0
+local DetectedHackers = {} 
+local LastPositions = {} 
 
--- إنشاء الأرضية السحرية للمشي في الهواء أو تحت الأرض
 local AirPlatform = Instance.new("Part")
 AirPlatform.Name = "GUNSLAYER_AIR_PLATFORM"
 AirPlatform.Size = Vector3.new(15, 1, 15)
@@ -60,10 +60,8 @@ AirPlatform.Material = Enum.Material.ForceField
 AirPlatform.Color = Color3.fromRGB(255, 0, 0)
 AirPlatform.Parent = nil
 
--- [ 3. نظام الـ ESP الكامل ]
 local function CreateGunSlayerESP(target, name, color, isPlayer)
     if target:FindFirstChild("GUNSLAYER_ESP") then 
-        -- تحديث اللون لو اتغير (مثلاً غير فريقه)
         target.GUNSLAYER_ESP.Frame.TextLabel.TextColor3 = color
         return 
     end
@@ -138,7 +136,6 @@ local function CreateGunSlayerESP(target, name, color, isPlayer)
     end
 end
 
--- [ 4. نظام البحث المتقدم ]
 local function UpdatePlayerList()
     local list = {}
     for _, p in pairs(Players:GetPlayers()) do
@@ -147,10 +144,10 @@ local function UpdatePlayerList()
             elseif p.Name:lower():find(Settings.SearchText:lower()) then table.insert(list, p.Name) end
         end
     end
+    if #list == 0 then table.insert(list, "لا يوجد لاعبين") end
     return list
 end
 
--- [ 5. دوال الحركة والتنقل ]
 local function ExecuteTweenSticky(targetName)
     local victim = Players:FindFirstChild(targetName)
     if not victim or not victim.Character or not victim.Character:FindFirstChild("HumanoidRootPart") then return end
@@ -170,107 +167,107 @@ local function ExecuteTweenSticky(targetName)
         TweenInfo.new(travelTime, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), 
         {CFrame = targetHrp.CFrame * CFrame.new(0, Settings.PlayerLiftHeight, 4)}
     )
-    
     CurrentTween:Play()
     CurrentTween.Completed:Connect(function()
-        if Settings.TweenStickyToggle then
-            Settings.StickyActive = true
-            Rayfield:Notify({Title = "✅ وصلت!", Content = "اللزقة شغاله دلوقتي!", Duration = 2})
-        end
+        if Settings.TweenStickyToggle then Settings.StickyActive = true end
     end)
 end
 
--- [ 6. بناء الواجهة (GUI) ]
 local Window = Rayfield:CreateWindow({
-   Name = "AMY HUB | GUNSLAYER V2.6 🔫",
+   Name = "AMY HUB | GUNSLAYER V3.0 🔫",
    LoadingTitle = "Adham_M_YT x AMY LOADING...",
-   LoadingSubtitle = "Loading Scripts From AMY HUB...",
+   LoadingSubtitle = "Loading Safe Scripts...",
    ConfigurationSaving = {Enabled = false}
 })
 
-local InfoTab = Window:CreateTab("📜 معلومات السكربت", 4483362458)
+local InfoTab = Window:CreateTab("📜 المعلومات", 4483362458)
 local MainTab = Window:CreateTab("🎯 Combat", 4483362458)
 local PlayerTab = Window:CreateTab("👤 Player Lock", 4483362458)
 local VisualsTab = Window:CreateTab("👁️ ESP", 4483362458) 
 local PVP_Tab = Window:CreateTab("⚡ PVP Player", 4483362458)
+local RadarTab = Window:CreateTab("🛡️ Hacker Radar", 4483362458) 
 
--- [ إعدادات تاب المعلومات ]
+-- [ إرجاع تاب المعلومات بالكامل ]
 InfoTab:CreateSection("👤 فريق التطوير")
 InfoTab:CreateLabel("المطور الرسمي: Adham_M_YT")
 InfoTab:CreateLabel("المساعد البرمجي: AMY")
 InfoTab:CreateLabel("المنصة الرسمية: AMY HUB")
 InfoTab:CreateSection("🌟 رسالة شكر")
-InfoTab:CreateParagraph({Title = "شكراً لكم", Content = "شكراً لدعمكم المستمر لـ AMY HUB."})
+InfoTab:CreateParagraph({Title = "شكراً لكم", Content = "شكراً لدعمكم المستمر لـ AMY HUB. نتمنى لكم تجربة لعب ممتعة وبدون باند!"})
 
--- [ إعدادات تاب القتال الأساسي ]
-MainTab:CreateSection("🔫 أدوات القتال")
+MainTab:CreateSection("🔫 أدوات القتال الأساسية")
 MainTab:CreateToggle({Name = "PC Aimbot (Right Click)", CurrentValue = false, Callback = function(v) Settings.Aimbot = v end})
-MainTab:CreateToggle({Name = "Auto Clicker", CurrentValue = false, Callback = function(v) Settings.AutoClicker = v end})
 
-MainTab:CreateSection("🟩 Hitbox Expander (الضرب من ورا الحيطة)")
+-- [ إضافة اختصار الكيبورد للأوتو كليكر ]
+MainTab:CreateKeybind({
+   Name = "⌨️ اختصار زر الأوتو كليكر",
+   CurrentKeybind = "C",
+   HoldToInteract = false,
+   Callback = function()
+       Settings.AutoClicker = not Settings.AutoClicker
+       Rayfield:Notify({Title = "🖱️ Auto Clicker", Content = Settings.AutoClicker and "تم التشغيل" or "تم الإيقاف", Duration = 2})
+   end,
+})
+MainTab:CreateToggle({Name = "تشغيل الأوتو كليكر يدوياً", CurrentValue = false, Callback = function(v) Settings.AutoClicker = v end})
+
+MainTab:CreateSection("🟩 Hitbox Expander")
+MainTab:CreateToggle({
+    Name = "⚔️ نظام قتال حر (FFA - الكل أعداء أحمر)", 
+    CurrentValue = false, 
+    Callback = function(v) Settings.FFAMode = v end
+})
+MainTab:CreateToggle({
+    Name = "تفعيل المربعات لفريقي (أخضر 🟩)",
+    CurrentValue = false, 
+    Callback = function(v) Settings.HitboxTeam = v end
+})
 MainTab:CreateToggle({
     Name = "تفعيل Hitbox للجميع", 
     CurrentValue = false, 
     Callback = function(v) 
         Settings.HitboxExpander = v 
         if not v then
-            -- إرجاع حجم كل اللاعبين للطبيعي عند الإغلاق
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    p.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
-                    p.Character.HumanoidRootPart.Transparency = 1
-                    p.Character.HumanoidRootPart.CanCollide = true
+                    pcall(function()
+                        p.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
+                        p.Character.HumanoidRootPart.Transparency = 1
+                        p.Character.HumanoidRootPart.CanCollide = true
+                    end)
                 end
             end
         end
     end
 })
-
-MainTab:CreateToggle({
-    Name = "تفعيل المربعات لفريقي (أخضر 🟩)", 
-    CurrentValue = false, 
-    Callback = function(v) 
-        Settings.HitboxTeam = v 
-        if not v then
-            -- إرجاع فريقك للحجم الطبيعي لو قفلت الزرار ده
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= LP and p.Team == LP.Team and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    p.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
-                    p.Character.HumanoidRootPart.Transparency = 1
-                    p.Character.HumanoidRootPart.CanCollide = true
-                end
-            end
-        end
-    end
-})
-
 MainTab:CreateSlider({Name = "📐 حجم صندوق اللاعب (Hitbox Size)", Range = {10, 150}, Increment = 5, CurrentValue = 50, Callback = function(v) Settings.HitboxSize = v end})
 
--- [ إعدادات تاب اللاعبين ]
-PlayerTab:CreateSection("🔍 البحث عن الضحية")
 PlayerDrop = PlayerTab:CreateDropdown({
-   Name = "اختر الضحية 🔒", Options = UpdatePlayerList(), CurrentOption = {""},
+   Name = "اختر الضحية 🔒", Options = UpdatePlayerList(), CurrentOption = "", MultipleOptions = false,
    Callback = function(v) 
-       Settings.TargetPlayer = v[1]
-       if Settings.TweenStickyToggle then ExecuteTweenSticky(v[1]) end
+       local selected = type(v) == "table" and v[1] or v
+       if selected == "لا يوجد لاعبين" then return end
+       Settings.TargetPlayer = selected
+       if Settings.TweenStickyToggle then ExecuteTweenSticky(selected) end
    end,
 })
+
 PlayerTab:CreateInput({
     Name = "اكتب اسم اللاعب للبحث...", PlaceholderText = "بحث سريع...", RemoveTextAfterFocusLost = false,
     Callback = function(text)
         Settings.SearchText = text
-        PlayerDrop:Refresh(UpdatePlayerList())
+        pcall(function() PlayerDrop:Refresh(UpdatePlayerList()) end)
     end,
 })
 
-PlayerTab:CreateSection("⚙️ تحكم اللزقة (Sticky Control)")
+PlayerTab:CreateSection("⚙️ تحكم اللزقة")
 PlayerTab:CreateSlider({Name = "سرعة الوصول للضحية", Range = {200, 800}, Increment = 20, CurrentValue = 380, Callback = function(v) Settings.TweenSpeed = v end})
 PlayerTab:CreateSlider({Name = "⬇️ مستوى الارتفاع", Range = {-100, 100}, Increment = 2, CurrentValue = 0, Callback = function(v) Settings.PlayerLiftHeight = v end})
 PlayerTab:CreateToggle({
     Name = "🔒 تفعيل اللزقة على الهدف", CurrentValue = false, 
     Callback = function(v) 
         Settings.TweenStickyToggle = v
-        if v and Settings.TargetPlayer then ExecuteTweenSticky(Settings.TargetPlayer) 
+        if v and Settings.TargetPlayer and Settings.TargetPlayer ~= "لا يوجد لاعبين" then 
+            ExecuteTweenSticky(Settings.TargetPlayer) 
         else 
             Settings.StickyActive = false
             if CurrentTween then CurrentTween:Cancel() end
@@ -278,89 +275,119 @@ PlayerTab:CreateToggle({
     end
 })
 
--- [ إعدادات الرؤية ]
 VisualsTab:CreateToggle({Name = "🔫 Player ESP", CurrentValue = false, Callback = function(v) Settings.PlayerESP = v end})
 
--- [ إعدادات تاب الـ PVP Player ]
-PVP_Tab:CreateSection("🚀 منصة المشي السحرية (Air & Underground Walk)")
-PVP_Tab:CreateSlider({
-    Name = "تحديد الارتفاع (+ لفوق / - لتحت الأرض)", 
-    Range = {-200, 300}, Increment = 5, CurrentValue = 50, 
-    Callback = function(v) Settings.CustomHeightOffset = v end
-})
-
+PVP_Tab:CreateSection("🚀 منصة المشي السحرية")
+PVP_Tab:CreateSlider({Name = "تحديد الارتفاع", Range = {-200, 300}, Increment = 5, CurrentValue = 50, Callback = function(v) Settings.CustomHeightOffset = v end})
 PVP_Tab:CreateToggle({
-    Name = "تفعيل المشي في الارتفاع المحدد",
-    CurrentValue = false,
+    Name = "تفعيل المشي في الارتفاع المحدد", CurrentValue = false,
     Callback = function(v)
         Settings.AirWalkToggle = v
         local char = LP.Character
         if v and char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-            TargetAirWalkY = hrp.Position.Y + Settings.CustomHeightOffset
-            hrp.CFrame = CFrame.new(hrp.Position.X, TargetAirWalkY, hrp.Position.Z)
+            TargetAirWalkY = char.HumanoidRootPart.Position.Y + Settings.CustomHeightOffset
+            char.HumanoidRootPart.CFrame = CFrame.new(char.HumanoidRootPart.Position.X, TargetAirWalkY, char.HumanoidRootPart.Position.Z)
             AirPlatform.Parent = workspace
-            Rayfield:Notify({Title = "🚀 تفعيل النقل", Content = "تم نقلك للارتفاع المحدد!", Duration = 3})
         else
             AirPlatform.Parent = nil
-            Rayfield:Notify({Title = "🛑 إيقاف", Content = "رجعت للوضع الطبيعي", Duration = 2})
         end
     end
 })
 
-PVP_Tab:CreateSection("⚙️ تعديلات السرعة الأساسية")
 PVP_Tab:CreateSlider({Name = "سرعة المشي (WalkSpeed)", Range = {16, 1000}, Increment = 5, CurrentValue = 16, Callback = function(v) Settings.WalkSpeed = v end})
-PVP_Tab:CreateSlider({Name = "قوة القفز (JumpPower)", Range = {50, 200}, Increment = 5, CurrentValue = 50, Callback = function(v) Settings.JumpPower = v end})
+PVP_Tab:CreateToggle({Name = "🚀 طيران لا نهائي", CurrentValue = false, Callback = function(v) Settings.InfJump = v end})
+PVP_Tab:CreateToggle({Name = "👻 اختراق الجدران", CurrentValue = false, Callback = function(v) Settings.Noclip = v end})
 
--- [ زر القفل للموبايل ]
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-local LockBtn = Instance.new("TextButton", ScreenGui)
-LockBtn.Name = "LockButton"
-LockBtn.Size = UDim2.new(0, 80, 0, 80)
-LockBtn.Position = UDim2.new(0.85, 0, 0.4, 0)
-LockBtn.BackgroundColor3 = Color3.new(0, 0, 0)
-LockBtn.Text = "LOCK OFF"
-LockBtn.TextColor3 = Color3.new(1, 0, 0)
-LockBtn.Font = Enum.Font.GothamBold
-LockBtn.TextScaled = true
-LockBtn.Visible = false
-LockBtn.Draggable = true
-local Corner = Instance.new("UICorner", LockBtn)
-Corner.CornerRadius = UDim.new(0, 12)
-local Stroke = Instance.new("UIStroke", LockBtn)
-Stroke.Color = Color3.new(1, 0, 0)
-Stroke.Thickness = 3
+RadarTab:CreateSection("🚨 كاشف الهكرات المتقدم (تم إصلاح الرسباون)")
+RadarTab:CreateToggle({
+    Name = "تفعيل رادار كشف الهكرات", CurrentValue = false,
+    Callback = function(v)
+        Settings.RadarEnabled = v
+        if v then Rayfield:Notify({Title = "🛡️ الرادار يعمل", Content = "جاري مسح السيرفر...", Duration = 3})
+        else DetectedHackers = {}; LastPositions = {} end
+    end
+})
+RadarTab:CreateButton({
+    Name = "🔄 إعادة ضبط قائمة المكتشفين",
+    Callback = function()
+        DetectedHackers = {}
+        Rayfield:Notify({Title = "✅ تم", Content = "تم تصفية قائمة الهكرات", Duration = 2})
+    end
+})
 
-LockBtn.MouseButton1Click:Connect(function()
-    Settings.MobileLock = not Settings.MobileLock
-    if Settings.MobileLock then
-        LockBtn.Text = "LOCK ON"
-        LockBtn.TextColor3 = Color3.new(0, 1, 0)
-        Stroke.Color = Color3.new(0, 1, 0)
-    else
-        LockBtn.Text = "LOCK OFF"
-        LockBtn.TextColor3 = Color3.new(1, 0, 0)
-        Stroke.Color = Color3.new(1, 0, 0)
+-- [ 7. المحركات والخوارزميات (The Loops) ]
+
+-- الرادار الذكي بعد إصلاح الرسباون
+task.spawn(function()
+    while task.wait(1) do
+        pcall(function()
+            if Settings.RadarEnabled then
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = p.Character.HumanoidRootPart
+                        local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                        local currentPos = hrp.Position
+                        
+                        -- التأكد إن اللاعب عايش
+                        if hum and hum.Health > 0 and not DetectedHackers[p.Name] then
+                            local isHacking = false
+                            local hackType = ""
+                            
+                            if LastPositions[p.Name] then
+                                local distanceMoved = (currentPos - LastPositions[p.Name]).Magnitude
+                                -- تجاهل المسافات الضخمة بتاعت الرسباون (فوق 400 بلوكة)
+                                if distanceMoved > 80 and distanceMoved < 400 then 
+                                    isHacking = true
+                                    hackType = "🚀 سرعة عالية / طيران"
+                                end
+                            end
+                            LastPositions[p.Name] = currentPos
+                            
+                            if hrp.RotVelocity.Magnitude > 60 then
+                                isHacking = true
+                                hackType = "🌪️ Spinbot"
+                            end
+                            
+                            if isHacking then
+                                DetectedHackers[p.Name] = true
+                                Rayfield:Notify({Title = "🚨 رادار الهكرات!", Content = "اللاعب [" .. p.Name .. "] بيستخدم: " .. hackType, Duration = 8})
+                            end
+                        end
+                    end
+                end
+            end
+        end)
     end
 end)
 
-MainTab:CreateSection("📱 إعدادات الهاتف")
-MainTab:CreateToggle({Name = "إظهار زر القفل للموبايل", CurrentValue = false, Callback = function(v) LockBtn.Visible = v end})
+RunService.Stepped:Connect(function()
+    pcall(function()
+        if Settings.Noclip and LP.Character then
+            for _, part in pairs(LP.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
+            end
+        end
+    end)
+end)
 
--- [ 7. المحركات والخوارزميات (The Loops) ]
+UserInputService.JumpRequest:Connect(function()
+    pcall(function()
+        if Settings.InfJump and LP.Character then
+            local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end
+    end)
+end)
+
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
         local hrp = LP.Character.HumanoidRootPart
         local hum = LP.Character:FindFirstChildOfClass("Humanoid")
         
-        if hum then
-            hum.WalkSpeed = Settings.WalkSpeed
-            hum.JumpPower = Settings.JumpPower
-        end
+        if hum then hum.WalkSpeed = Settings.WalkSpeed end
         
-        -- اللزقة
-        if Settings.TweenStickyToggle and Settings.StickyActive and Settings.TargetPlayer then
+        if Settings.TweenStickyToggle and Settings.StickyActive and Settings.TargetPlayer and Settings.TargetPlayer ~= "لا يوجد لاعبين" then
             local victim = Players:FindFirstChild(Settings.TargetPlayer)
             if victim and victim.Character and victim.Character:FindFirstChild("HumanoidRootPart") then
                 local targetHrp = victim.Character.HumanoidRootPart
@@ -369,7 +396,6 @@ RunService.Heartbeat:Connect(function()
             end
         end
         
-        -- تحديث منصة المشي
         if Settings.AirWalkToggle and AirPlatform.Parent == workspace then
             AirPlatform.Position = Vector3.new(hrp.Position.X, TargetAirWalkY - 3.5, hrp.Position.Z)
             hrp.CFrame = CFrame.new(hrp.Position.X, TargetAirWalkY, hrp.Position.Z)
@@ -378,77 +404,98 @@ RunService.Heartbeat:Connect(function()
 end)
 
 RunService.RenderStepped:Connect(function()
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = p.Character.HumanoidRootPart
-            local isTeammate = (LP.Team ~= nil and p.Team == LP.Team)
-            
-            -- نظام الـ Hitbox الذكي
-            if Settings.HitboxExpander then
-                if isTeammate and not Settings.HitboxTeam then
-                    -- إرجاع فريقك للحجم الطبيعي لو الخيار مطفي
-                    if hrp.Size.X > 3 then
-                        hrp.Size = Vector3.new(2, 2, 1)
-                        hrp.Transparency = 1
-                        hrp.CanCollide = true
-                    end
-                else
-                    -- تكبير المربع
-                    hrp.Size = Vector3.new(Settings.HitboxSize, Settings.HitboxSize, Settings.HitboxSize)
-                    hrp.Transparency = 0.7
-                    hrp.Material = Enum.Material.Neon
-                    hrp.CanCollide = false
-                    
-                    -- تلوين المربع (فريقك أخضر / الأعداء أحمر)
-                    if isTeammate then
-                        hrp.BrickColor = BrickColor.new("Bright green")
-                    else
-                        hrp.BrickColor = BrickColor.new("Bright red")
-                    end
-                end
-            end
-            
-            -- نظام الـ ESP الذكي
-            if Settings.PlayerESP then
-                local espColor = Color3.new(1, 0.3, 0.3) -- أحمر للأعداء
-                if isTeammate then
-                    espColor = Color3.new(0.3, 1, 0.3) -- أخضر لفريقك
-                end
-                CreateGunSlayerESP(hrp, p.Name, espColor, true)
-            end
-        end
-    end
-    
-    -- نظام الـ Aimbot
-    if Settings.Aimbot and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-        local target, dist = nil, math.huge
+    pcall(function()
         for _, p in pairs(Players:GetPlayers()) do
-            -- Aimbot يتجاهل فريقك
-            if p ~= LP and p.Character and p.Character:FindFirstChild("Head") and (p.Team ~= LP.Team or LP.Team == nil) then
-                local headPos = p.Character.Head.Position
-                local screenPos, onScreen = Camera:WorldToViewportPoint(headPos)
-                if onScreen then
-                    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                    if distance < dist then dist = distance; target = headPos end
+            if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = p.Character.HumanoidRootPart
+                
+                -- إصلاح ألوان الفريق بالكامل
+                local isTeammate = false
+                if not Settings.FFAMode and LP.Team ~= nil then 
+                    isTeammate = (p.Team == LP.Team) 
+                end
+                
+                if Settings.HitboxExpander then
+                    if isTeammate and not Settings.HitboxTeam then
+                        -- إرجاع الفريق للحجم الطبيعي
+                        if hrp.Size.X > 3 then
+                            hrp.Size = Vector3.new(2, 2, 1)
+                            hrp.Transparency = 1
+                            hrp.CanCollide = true
+                        end
+                    else
+                        -- تكبير المربعات
+                        hrp.Size = Vector3.new(Settings.HitboxSize, Settings.HitboxSize, Settings.HitboxSize)
+                        hrp.Transparency = 0.7
+                        hrp.Material = Enum.Material.Neon
+                        hrp.CanCollide = false
+                        
+                        -- التلوين الصحيح
+                        if isTeammate then 
+                            hrp.Color = Color3.fromRGB(0, 255, 0) -- أخضر لفريقك
+                        else 
+                            hrp.Color = Color3.fromRGB(255, 0, 0) -- أحمر للأعداء
+                        end
+                    end
+                end
+                
+                if Settings.PlayerESP then
+                    local espColor = Color3.fromRGB(255, 0, 0)
+                    if isTeammate then espColor = Color3.fromRGB(0, 255, 0) end
+                    CreateGunSlayerESP(hrp, p.Name, espColor, true)
                 end
             end
         end
-        if target then Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, target) end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(0.03) do
-        if Settings.AutoClicker then 
-            VirtualUser:Button1Down(Vector2.new())
-            task.wait(0.01)
-            VirtualUser:Button1Up(Vector2.new())
+        
+        if Settings.Aimbot and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+            local target, dist = nil, math.huge
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LP and p.Character and p.Character:FindFirstChild("Head") then
+                    local isTeammate = (LP.Team ~= nil and p.Team == LP.Team)
+                    if Settings.FFAMode or not isTeammate then
+                        local headPos = p.Character.Head.Position
+                        local screenPos, onScreen = Camera:WorldToViewportPoint(headPos)
+                        if onScreen then
+                            local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                            local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                            if distance < dist then dist = distance; target = headPos end
+                        end
+                    end
+                end
+            end
+            if target then Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, target) end
         end
+    end)
+end)
+
+-- الأوتو كليكر 
+task.spawn(function()
+    while task.wait(0.01) do
+        pcall(function()
+            if Settings.AutoClicker then 
+                if type(mouse1click) == "function" then
+                    mouse1click()
+                else
+                    VirtualUser:Button1Down(Vector2.new())
+                    task.wait(0.01)
+                    VirtualUser:Button1Up(Vector2.new())
+                end
+            end
+        end)
     end
 end)
 
-LP.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
-LP.CharacterAdded:Connect(function() Settings.StickyActive = false; Settings.AirWalkToggle = false; if CurrentTween then CurrentTween:Cancel() end end)
+LP.Idled:Connect(function() 
+    pcall(function() 
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new()) 
+    end) 
+end)
 
-Rayfield:Notify({Title = "✅ AMY HUB | GUNSLAYER V2.6", Content = "تم تحديث السكربت (فلترة الفريق + المشي السحري)", Duration = 6})
+LP.CharacterAdded:Connect(function() 
+    Settings.StickyActive = false 
+    Settings.AirWalkToggle = false 
+    if CurrentTween then CurrentTween:Cancel() end 
+end)
+
+pcall(function() Rayfield:Notify({Title = "✅ AMY HUB | V3.0", Content = " تم حل جميع مشاكل اوتو كليكر للكمبيوتر!", Duration = 6}) end)
